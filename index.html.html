@@ -1,0 +1,1186 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hugo's Pizza - Order</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+        
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        
+        .fade-in {
+            animation: fadeIn 0.3s ease-in-out;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .slide-in-right {
+            animation: slideInRight 0.3s ease-out;
+        }
+        
+        @keyframes slideInRight {
+            from { transform: translateX(100%); }
+            to { transform: translateX(0); }
+        }
+        
+        .unavailable-item {
+            opacity: 0.6;
+            pointer-events: none;
+            filter: grayscale(100%);
+        }
+        
+        .cart-item-enter {
+            animation: slideInRight 0.3s ease-out;
+        }
+        
+        /* Custom scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f1f1;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+
+        /* Hero section with full logo background */
+        .hero-with-logo {
+            position: relative;
+            overflow: hidden;
+            background-color: #f97316;
+        }
+        
+        .hero-logo-bg {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            object-position: center;
+            z-index: 0;
+        }
+
+        .hero-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(to right, rgba(249, 115, 22, 0.85), rgba(220, 38, 38, 0.75));
+            z-index: 1;
+        }
+
+        .hero-content {
+            position: relative;
+            z-index: 10;
+        }
+
+        /* Hugo's Logo in navigation */
+        .nav-logo {
+            height: 40px;
+            width: auto;
+            object-fit: contain;
+        }
+
+        /* Receipt upload styles */
+        .receipt-upload-container {
+            border: 2px dashed #cbd5e1;
+            border-radius: 0.5rem;
+            padding: 1rem;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .receipt-upload-container:hover {
+            border-color: #f97316;
+            background-color: #fff7ed;
+        }
+        .receipt-upload-container.has-receipt {
+            border-style: solid;
+            border-color: #22c55e;
+            background-color: #f0fdf4;
+        }
+
+        /* Validation styles */
+        .validation-error {
+            border-color: #ef4444 !important;
+            background-color: #fef2f2 !important;
+        }
+        
+        .validation-message {
+            color: #ef4444;
+            font-size: 0.75rem;
+            margin-top: 0.25rem;
+            display: none;
+        }
+        
+        .validation-message.show {
+            display: block;
+        }
+
+        .payment-method-card {
+            border: 2px solid #e5e7eb;
+            border-radius: 0.5rem;
+            padding: 1rem;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .payment-method-card:hover {
+            border-color: #f97316;
+            background-color: #fff7ed;
+        }
+        
+        .payment-method-card.selected {
+            border-color: #f97316;
+            background-color: #fff7ed;
+            box-shadow: 0 0 0 3px rgba(249, 115, 22, 0.1);
+        }
+
+        .amount-match {
+            color: #16a34a;
+            font-weight: 600;
+        }
+        
+        .amount-mismatch {
+            color: #dc2626;
+            font-weight: 600;
+        }
+    </style>
+</head>
+<body class="bg-gray-50 text-gray-800">
+
+    <!-- Navigation -->
+    <nav class="bg-white shadow-sm sticky top-0 z-50 border-b border-gray-200">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between h-16 items-center">
+                <div class="flex items-center cursor-pointer">
+                    <img src="hugo.jpg" alt="Hugo's Pizza" class="nav-logo" onerror="this.style.display='none'; document.getElementById('nav-text-logo').style.display='flex'">
+                    <div id="nav-text-logo" class="hidden items-center">
+                        <i data-lucide="pizza" class="h-8 w-8 text-orange-500 mr-2"></i>
+                        <span class="font-bold text-xl text-gray-900">Hugo's Pizza</span>
+                    </div>
+                </div>
+                
+                <div class="flex items-center space-x-4">
+                    <button onclick="app.toggleCart()" class="relative p-2 text-gray-600 hover:text-orange-500 transition-colors">
+                        <i data-lucide="shopping-cart" class="h-6 w-6"></i>
+                        <span id="cart-badge" class="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center hidden">0</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- CUSTOMER VIEW -->
+    <div id="customer-view" class="fade-in">
+        <!-- Hero Section with Full Logo Background -->
+        <div class="hero-with-logo text-white py-16">
+            <!-- Logo as full background -->
+            <img src="hugo.jpg" alt="Hugo's Pizza Logo" class="hero-logo-bg" onerror="this.style.display='none'">
+            <!-- Overlay to ensure text readability -->
+            <div class="hero-overlay"></div>
+            
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 hero-content">
+                <h1 class="text-4xl font-bold mb-4">Welcome to Hugo's Pizza</h1>
+                <p class="text-orange-100 text-lg max-w-2xl">Artisan pizzas made with love. Fresh ingredients, authentic recipes, delivered to your doorstep.</p>
+                <div class="mt-6 flex items-center space-x-2 text-sm">
+                    <i data-lucide="star" class="fill-current text-yellow-400 h-5 w-5"></i>
+                    <span class="font-semibold">5.0</span>
+                    <span class="text-orange-100">• Compostela, Davao de Oro</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Menu Categories -->
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+            <!-- Category Filter -->
+            <div class="flex flex-wrap gap-2 mb-8" id="category-filters">
+                <button onclick="app.filterCategory('all')" class="px-4 py-2 rounded-full bg-orange-500 text-white font-medium text-sm transition-all hover:bg-orange-600 active-category">All</button>
+                <button onclick="app.filterCategory('pizza')" class="px-4 py-2 rounded-full bg-gray-200 text-gray-700 font-medium text-sm transition-all hover:bg-gray-300">Pizza</button>
+                <button onclick="app.filterCategory('pasta')" class="px-4 py-2 rounded-full bg-gray-200 text-gray-700 font-medium text-sm transition-all hover:bg-gray-300">Pasta</button>
+                <button onclick="app.filterCategory('sides')" class="px-4 py-2 rounded-full bg-gray-200 text-gray-700 font-medium text-sm transition-all hover:bg-gray-300">Sides</button>
+                <button onclick="app.filterCategory('beverages')" class="px-4 py-2 rounded-full bg-gray-200 text-gray-700 font-medium text-sm transition-all hover:bg-gray-300">Beverages</button>
+            </div>
+
+            <!-- Menu Grid -->
+            <div id="menu-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <!-- Items injected here -->
+            </div>
+        </div>
+    </div>
+
+    <!-- CART SIDEBAR -->
+    <div id="cart-sidebar" class="fixed inset-0 z-50 hidden">
+        <div class="absolute inset-0 bg-black bg-opacity-50 transition-opacity" onclick="app.toggleCart()"></div>
+        <div class="absolute right-0 top-0 h-full w-full max-w-md bg-white shadow-xl slide-in-right flex flex-col">
+            <div class="p-6 border-b border-gray-200 flex justify-between items-center">
+                <h2 class="text-xl font-bold text-gray-900">Your Order</h2>
+                <button onclick="app.toggleCart()" class="text-gray-400 hover:text-gray-600">
+                    <i data-lucide="x" class="h-6 w-6"></i>
+                </button>
+            </div>
+            
+            <div id="cart-items" class="flex-1 overflow-y-auto p-6 space-y-4">
+                <!-- Cart items injected here -->
+            </div>
+            
+            <div id="cart-empty" class="hidden flex-1 flex flex-col items-center justify-center p-6 text-gray-400">
+                <i data-lucide="shopping-bag" class="h-16 w-16 mb-4"></i>
+                <p>Your cart is empty</p>
+                <button onclick="app.toggleCart()" class="mt-4 text-orange-500 font-medium">Browse Menu</button>
+            </div>
+
+            <div id="cart-footer" class="border-t border-gray-200 p-6 space-y-4">
+                <div class="flex justify-between text-base font-medium text-gray-900">
+                    <p>Subtotal</p>
+                    <p id="cart-total">₱0.00</p>
+                </div>
+                <p class="text-sm text-gray-500">Shipping and taxes calculated at checkout.</p>
+                <button onclick="app.checkout()" class="w-full bg-orange-500 text-white py-3 px-4 rounded-lg hover:bg-orange-600 transition-colors font-medium flex items-center justify-center gap-2">
+                    Checkout
+                    <i data-lucide="arrow-right" class="h-4 w-4"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- CHECKOUT MODAL -->
+    <div id="checkout-modal" class="fixed inset-0 z-50 hidden">
+        <div class="absolute inset-0 bg-black bg-opacity-50 transition-opacity" onclick="app.closeCheckout()"></div>
+        <div class="absolute inset-0 flex items-center justify-center p-4">
+            <div class="bg-white rounded-lg shadow-xl max-w-lg w-full max-h-[90vh] overflow-y-auto fade-in">
+                <div class="p-6 border-b border-gray-200 flex justify-between items-center">
+                    <h2 class="text-xl font-bold text-gray-900">Complete Your Order</h2>
+                    <button onclick="app.closeCheckout()" class="text-gray-400 hover:text-gray-600">
+                        <i data-lucide="x" class="h-6 w-6"></i>
+                    </button>
+                </div>
+                
+                <form id="checkout-form" onsubmit="app.submitOrder(event)" class="p-6 space-y-4">
+                    <!-- Customer Details -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Full Name *</label>
+                        <input type="text" name="name" required class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent outline-none" placeholder="John Doe">
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Phone Number *</label>
+                        <input type="tel" name="phone" required class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent outline-none" placeholder="09XX XXX XXXX">
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Delivery Address *</label>
+                        <textarea name="address" required rows="3" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent outline-none" placeholder="Enter your complete address"></textarea>
+                    </div>
+                    
+                    <!-- Payment Method Selection -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-3">Payment Method *</label>
+                        <div class="grid grid-cols-2 gap-3">
+                            <div class="payment-method-card selected" onclick="app.selectPaymentMethod('cod')" id="payment-cod">
+                                <div class="flex items-center gap-2 mb-2">
+                                    <i data-lucide="banknote" class="h-5 w-5 text-orange-500"></i>
+                                    <span class="font-medium text-sm">Cash on Delivery</span>
+                                </div>
+                                <p class="text-xs text-gray-500">Pay when you receive</p>
+                            </div>
+                            
+                            <div class="payment-method-card" onclick="app.selectPaymentMethod('gcash')" id="payment-gcash">
+                                <div class="flex items-center gap-2 mb-2">
+                                    <div class="h-5 w-5 bg-blue-500 rounded-full flex items-center justify-center text-white text-xs font-bold">G</div>
+                                    <span class="font-medium text-sm">GCash</span>
+                                </div>
+                                <p class="text-xs text-gray-500">Mobile wallet payment</p>
+                            </div>
+                            
+                            <div class="payment-method-card" onclick="app.selectPaymentMethod('maya')" id="payment-maya">
+                                <div class="flex items-center gap-2 mb-2">
+                                    <div class="h-5 w-5 bg-green-500 rounded-full flex items-center justify-center text-white text-xs font-bold">M</div>
+                                    <span class="font-medium text-sm">Maya</span>
+                                </div>
+                                <p class="text-xs text-gray-500">Digital wallet payment</p>
+                            </div>
+                            
+                            <div class="payment-method-card" onclick="app.selectPaymentMethod('grabpay')" id="payment-grabpay">
+                                <div class="flex items-center gap-2 mb-2">
+                                    <div class="h-5 w-5 bg-green-600 rounded-full flex items-center justify-center text-white text-xs font-bold">GP</div>
+                                    <span class="font-medium text-sm">GrabPay</span>
+                                </div>
+                                <p class="text-xs text-gray-500">Grab wallet payment</p>
+                            </div>
+                        </div>
+                        <input type="hidden" name="payment" id="payment-method-input" value="cod">
+                    </div>
+                    
+                    <!-- Cash on Delivery Section -->
+                    <div id="cod-section" class="bg-orange-50 p-4 rounded-lg space-y-3">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Amount You Will Pay (₱) *</label>
+                            <input type="number" id="cod-amount" min="0" step="0.01" oninput="app.calculateChange()" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent outline-none" placeholder="Enter amount">
+                            <p class="validation-message" id="cod-validation">Please enter an amount equal to or greater than the total</p>
+                        </div>
+                        <div id="change-display" class="hidden">
+                            <div class="flex justify-between text-sm">
+                                <span class="text-gray-600">Your Payment:</span>
+                                <span id="payment-amount" class="font-medium">₱0.00</span>
+                            </div>
+                            <div class="flex justify-between text-sm">
+                                <span class="text-gray-600">Order Total:</span>
+                                <span id="total-amount-display" class="font-medium">₱0.00</span>
+                            </div>
+                            <div class="border-t border-orange-200 pt-2 mt-2">
+                                <div class="flex justify-between text-lg font-bold text-green-600">
+                                    <span>Your Change:</span>
+                                    <span id="change-amount">₱0.00</span>
+                                </div>
+                            </div>
+                        </div>
+                        <p id="insufficient-funds" class="hidden text-sm text-red-600 font-medium">⚠️ Insufficient amount. Please enter at least the total amount.</p>
+                    </div>
+                    
+                    <!-- E-Payment Section (GCash/Maya/GrabPay) -->
+                    <div id="epayment-section" class="hidden bg-blue-50 p-4 rounded-lg space-y-4">
+                        <div class="bg-white p-3 rounded-lg border border-blue-200">
+                            <p class="text-sm font-medium text-gray-700 mb-1">Please send payment to:</p>
+                            <div class="flex justify-between items-center">
+                                <span class="text-lg font-bold text-blue-600" id="epayment-account">0917 123 4567</span>
+                                <span class="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded" id="epayment-account-name">Hugo's Pizza</span>
+                            </div>
+                        </div>
+                        
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">
+                                <span id="receipt-label">GCash Receipt</span> *
+                            </label>
+                            
+                            <!-- Amount Validation Display -->
+                            <div class="mb-3 p-3 bg-white rounded-lg border border-gray-200">
+                                <div class="flex justify-between text-sm mb-1">
+                                    <span class="text-gray-600">Order Total:</span>
+                                    <span class="font-bold text-gray-900" id="epayment-total-display">₱0.00</span>
+                                </div>
+                                <div class="flex justify-between text-sm">
+                                    <span class="text-gray-600">Receipt Amount:</span>
+                                    <span class="font-bold" id="receipt-amount-display">Not verified</span>
+                                </div>
+                                <div id="amount-validation-status" class="mt-2 pt-2 border-t border-gray-100 text-sm hidden">
+                                    <span id="amount-match-icon"></span>
+                                    <span id="amount-match-text"></span>
+                                </div>
+                            </div>
+                            
+                            <div class="receipt-upload-container" id="receipt-upload-area" onclick="document.getElementById('receipt-input').click()">
+                                <input type="file" id="receipt-input" accept="image/*" class="hidden" onchange="app.handleReceiptUpload(this)">
+                                <div id="receipt-preview-container" class="hidden">
+                                    <img id="receipt-preview" class="mx-auto h-32 w-auto object-contain rounded-lg mb-2">
+                                    <p class="text-sm text-green-600 font-medium">✓ Receipt uploaded</p>
+                                    <p class="text-xs text-gray-500 mt-1">Click to change receipt</p>
+                                </div>
+                                <div id="receipt-upload-placeholder">
+                                    <i data-lucide="upload" class="h-8 w-8 mx-auto mb-2 text-gray-400"></i>
+                                    <p class="text-sm text-gray-600 font-medium">Click to upload receipt</p>
+                                    <p class="text-xs text-gray-400 mt-1">Must show amount: <span id="required-amount" class="font-bold text-orange-600">₱0.00</span></p>
+                                    <p class="text-xs text-gray-400">PNG, JPG up to 5MB</p>
+                                </div>
+                            </div>
+                            <input type="hidden" id="receipt-data" name="receiptData">
+                            <input type="hidden" id="receipt-amount" name="receiptAmount" value="0">
+                            
+                            <p class="validation-message mt-2" id="receipt-validation">Please upload a valid receipt showing the correct payment amount</p>
+                            
+                            <div class="mt-3 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                                <p class="text-xs text-yellow-800 font-medium mb-1">📋 Receipt Requirements:</p>
+                                <ul class="text-xs text-yellow-700 space-y-1 list-disc list-inside">
+                                    <li>Must show <span id="wallet-app-name">GCash</span> transaction</li>
+                                    <li>Amount must match exactly: <span id="exact-amount-required" class="font-bold">₱0.00</span></li>
+                                    <li>Reference number must be visible</li>
+                                    <li>Date and time must be visible</li>
+                                    <li>Recipient: Hugo's Pizza (0917 123 4567)</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Order Summary -->
+                    <div class="bg-gray-50 p-4 rounded-lg space-y-2 border-2 border-gray-200">
+                        <div class="flex justify-between text-sm">
+                            <span class="text-gray-600">Items (<span id="checkout-items-count">0</span>)</span>
+                            <button type="button" onclick="app.viewOrderDetails()" class="text-orange-500 text-xs hover:underline">View details</button>
+                        </div>
+                        <div class="border-t border-gray-200 pt-2 mt-2">
+                            <div class="flex justify-between text-lg font-bold text-gray-900">
+                                <span>Total Amount Due</span>
+                                <span id="checkout-total" class="text-orange-600">₱0.00</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <button type="submit" id="place-order-btn" class="w-full bg-orange-500 text-white py-3 px-4 rounded-lg hover:bg-orange-600 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed">
+                        Place Order
+                    </button>
+                    
+                    <p class="text-xs text-gray-500 text-center">By placing this order, you agree to our terms and conditions.</p>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Order Details Modal -->
+    <div id="order-details-modal" class="fixed inset-0 z-50 hidden">
+        <div class="absolute inset-0 bg-black bg-opacity-50" onclick="app.closeOrderDetails()"></div>
+        <div class="absolute inset-0 flex items-center justify-center p-4">
+            <div class="bg-white rounded-lg shadow-xl max-w-md w-full max-h-[80vh] overflow-y-auto fade-in">
+                <div class="p-6 border-b border-gray-200 flex justify-between items-center">
+                    <h3 class="text-lg font-bold text-gray-900">Order Details</h3>
+                    <button onclick="app.closeOrderDetails()" class="text-gray-400 hover:text-gray-600">
+                        <i data-lucide="x" class="h-5 w-5"></i>
+                    </button>
+                </div>
+                <div id="order-details-content" class="p-6 space-y-4">
+                    <!-- Order details injected here -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notification -->
+    <div id="toast" class="fixed bottom-4 right-4 bg-gray-900 text-white px-6 py-3 rounded-lg shadow-lg transform translate-y-full opacity-0 transition-all duration-300 z-50 flex items-center gap-2">
+        <i data-lucide="check-circle" class="h-5 w-5 text-green-400"></i>
+        <span id="toast-message">Action successful</span>
+    </div>
+
+    <script>
+        class PizzaApp {
+            constructor() {
+                this.cart = [];
+                this.currentCategory = 'all';
+                this.currentTotal = 0;
+                this.currentPaymentMethod = 'cod';
+                this.receiptAmount = 0;
+                
+                // E-wallet configuration
+                this.walletConfig = {
+                    gcash: {
+                        name: 'GCash',
+                        accountNumber: '0917 123 4567',
+                        accountName: 'Hugo\'s Pizza',
+                        color: 'blue'
+                    },
+                    maya: {
+                        name: 'Maya',
+                        accountNumber: '0918 987 6543',
+                        accountName: 'Hugo\'s Pizza',
+                        color: 'green'
+                    },
+                    grabpay: {
+                        name: 'GrabPay',
+                        accountNumber: '0919 456 7890',
+                        accountName: 'Hugo\'s Pizza',
+                        color: 'green'
+                    }
+                };
+                
+                // Initialize default menu if empty
+                this.initData();
+                this.renderMenu();
+                this.updateCartUI();
+                
+                // Initialize Lucide icons
+                lucide.createIcons();
+            }
+
+            initData() {
+                const defaultMenu = [
+                    {
+                        id: 1,
+                        name: "Hugo's Special",
+                        category: "pizza",
+                        price: 450,
+                        description: "Signature blend of pepperoni, mushrooms, bell peppers, and premium mozzarella",
+                        available: true,
+                        image: "pizza"
+                    },
+                    {
+                        id: 2,
+                        name: "Margherita Classic",
+                        category: "pizza",
+                        price: 380,
+                        description: "Fresh tomatoes, basil, and buffalo mozzarella with olive oil",
+                        available: true,
+                        image: "food"
+                    },
+                    {
+                        id: 3,
+                        name: "Pepperoni Feast",
+                        category: "pizza",
+                        price: 420,
+                        description: "Loaded with double pepperoni and extra cheese",
+                        available: true,
+                        image: "food"
+                    },
+                    {
+                        id: 4,
+                        name: "Hawaiian Delight",
+                        category: "pizza",
+                        price: 400,
+                        description: "Ham, pineapple chunks, and mozzarella cheese",
+                        available: false,
+                        image: "food"
+                    },
+                    {
+                        id: 5,
+                        name: "Carbonara Supreme",
+                        category: "pasta",
+                        price: 280,
+                        description: "Creamy carbonara with bacon bits and parmesan",
+                        available: true,
+                        image: "food"
+                    },
+                    {
+                        id: 6,
+                        name: "Garlic Bread",
+                        category: "sides",
+                        price: 120,
+                        description: "Toasted bread with garlic butter and herbs",
+                        available: true,
+                        image: "food"
+                    },
+                    {
+                        id: 7,
+                        name: "Garlic Parmesan Wings",
+                        category: "sides",
+                        price: 250,
+                        description: "Crispy wings tossed in garlic parmesan sauce",
+                        available: true,
+                        image: "food"
+                    },
+                    {
+                        id: 8,
+                        name: "Iced Tea",
+                        category: "beverages",
+                        price: 60,
+                        description: "House blend iced tea",
+                        available: true,
+                        image: "minimal"
+                    }
+                ];
+
+                if (!localStorage.getItem('hugos-menu')) {
+                    localStorage.setItem('hugos-menu', JSON.stringify(defaultMenu));
+                }
+                
+                if (!localStorage.getItem('hugos-orders')) {
+                    localStorage.setItem('hugos-orders', JSON.stringify([]));
+                }
+            }
+
+            getMenu() {
+                return JSON.parse(localStorage.getItem('hugos-menu') || '[]');
+            }
+
+            getOrders() {
+                return JSON.parse(localStorage.getItem('hugos-orders') || '[]');
+            }
+
+            saveOrders(orders) {
+                localStorage.setItem('hugos-orders', JSON.stringify(orders));
+            }
+
+            getItemImage(item) {
+                if (item.imageData && item.imageData.startsWith('data:image')) {
+                    return item.imageData;
+                }
+                if (item.imageUrl) {
+                    return item.imageUrl;
+                }
+                return `https://source.unsplash.com/640x360/?${item.image || 'food'},${item.category}`;
+            }
+
+            renderMenu() {
+                const menu = this.getMenu();
+                const grid = document.getElementById('menu-grid');
+                grid.innerHTML = '';
+
+                const filteredMenu = this.currentCategory === 'all' 
+                    ? menu 
+                    : menu.filter(item => item.category === this.currentCategory);
+
+                filteredMenu.forEach(item => {
+                    const card = document.createElement('div');
+                    const unavailableClass = item.available ? '' : 'unavailable-item';
+                    const unavailableBadge = item.available ? '' : 
+                        `<div class="absolute top-4 right-4 bg-gray-800 text-white text-xs px-2 py-1 rounded">Unavailable</div>`;
+                    
+                    const imageUrl = this.getItemImage(item);
+                    
+                    card.className = `bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden hover:shadow-md transition-shadow ${unavailableClass}`;
+                    card.innerHTML = `
+                        <div class="h-48 bg-gray-200 relative overflow-hidden">
+                            <img src="${imageUrl}" alt="${item.name}" class="w-full h-full object-cover" onerror="this.src='https://source.unsplash.com/640x360/?food,pizza'">
+                            ${unavailableBadge}
+                        </div>
+                        <div class="p-4">
+                            <div class="flex justify-between items-start mb-2">
+                                <h3 class="text-lg font-semibold text-gray-900">${item.name}</h3>
+                                <span class="text-orange-600 font-bold">₱${item.price.toFixed(2)}</span>
+                            </div>
+                            <p class="text-gray-600 text-sm mb-4 line-clamp-2">${item.description}</p>
+                            <button onclick="app.addToCart(${item.id})" 
+                                    class="w-full ${item.available ? 'bg-orange-500 hover:bg-orange-600' : 'bg-gray-300 cursor-not-allowed'} text-white py-2 px-4 rounded-lg transition-colors font-medium flex items-center justify-center gap-2"
+                                    ${!item.available ? 'disabled' : ''}>
+                                <i data-lucide="${item.available ? 'plus' : 'x'}" class="h-4 w-4"></i>
+                                ${item.available ? 'Add to Cart' : 'Unavailable'}
+                            </button>
+                        </div>
+                    `;
+                    grid.appendChild(card);
+                });
+                
+                lucide.createIcons();
+            }
+
+            filterCategory(category) {
+                this.currentCategory = category;
+                
+                const buttons = document.querySelectorAll('#category-filters button');
+                buttons.forEach(btn => {
+                    if (btn.textContent.toLowerCase() === category || (category === 'all' && btn.textContent === 'All')) {
+                        btn.classList.remove('bg-gray-200', 'text-gray-700');
+                        btn.classList.add('bg-orange-500', 'text-white');
+                    } else {
+                        btn.classList.remove('bg-orange-500', 'text-white');
+                        btn.classList.add('bg-gray-200', 'text-gray-700');
+                    }
+                });
+                
+                this.renderMenu();
+            }
+
+            addToCart(itemId) {
+                const menu = this.getMenu();
+                const item = menu.find(i => i.id === itemId);
+                
+                if (!item || !item.available) return;
+                
+                const existingItem = this.cart.find(i => i.id === itemId);
+                if (existingItem) {
+                    existingItem.quantity += 1;
+                } else {
+                    this.cart.push({ ...item, quantity: 1 });
+                }
+                
+                this.updateCartUI();
+                this.showToast(`Added ${item.name} to cart`);
+            }
+
+            removeFromCart(itemId) {
+                this.cart = this.cart.filter(item => item.id !== itemId);
+                this.updateCartUI();
+            }
+
+            updateQuantity(itemId, change) {
+                const item = this.cart.find(i => i.id === itemId);
+                if (item) {
+                    item.quantity += change;
+                    if (item.quantity <= 0) {
+                        this.removeFromCart(itemId);
+                    } else {
+                        this.updateCartUI();
+                    }
+                }
+            }
+
+            updateCartUI() {
+                const cartItems = document.getElementById('cart-items');
+                const cartEmpty = document.getElementById('cart-empty');
+                const cartFooter = document.getElementById('cart-footer');
+                const cartBadge = document.getElementById('cart-badge');
+                
+                const totalItems = this.cart.reduce((sum, item) => sum + item.quantity, 0);
+                const totalPrice = this.cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+                
+                if (totalItems > 0) {
+                    cartBadge.textContent = totalItems;
+                    cartBadge.classList.remove('hidden');
+                } else {
+                    cartBadge.classList.add('hidden');
+                }
+                
+                if (this.cart.length === 0) {
+                    cartItems.classList.add('hidden');
+                    cartEmpty.classList.remove('hidden');
+                    cartFooter.classList.add('hidden');
+                } else {
+                    cartItems.classList.remove('hidden');
+                    cartEmpty.classList.add('hidden');
+                    cartFooter.classList.remove('hidden');
+                    
+                    cartItems.innerHTML = this.cart.map(item => {
+                        const imageUrl = this.getItemImage(item);
+                        return `
+                            <div class="flex gap-4 cart-item-enter">
+                                <div class="h-20 w-20 bg-gray-200 rounded-lg overflow-hidden flex-shrink-0">
+                                    <img src="${imageUrl}" alt="${item.name}" class="w-full h-full object-cover" onerror="this.src='https://source.unsplash.com/200x200/?food'">
+                                </div>
+                                <div class="flex-1">
+                                    <h3 class="font-semibold text-gray-900 text-sm">${item.name}</h3>
+                                    <p class="text-orange-600 font-medium text-sm">₱${item.price.toFixed(2)}</p>
+                                    <div class="flex items-center gap-2 mt-2">
+                                        <button onclick="app.updateQuantity(${item.id}, -1)" class="h-6 w-6 rounded-full border border-gray-300 flex items-center justify-center hover:bg-gray-100">
+                                            <i data-lucide="minus" class="h-3 w-3"></i>
+                                        </button>
+                                        <span class="text-sm font-medium w-4 text-center">${item.quantity}</span>
+                                        <button onclick="app.updateQuantity(${item.id}, 1)" class="h-6 w-6 rounded-full border border-gray-300 flex items-center justify-center hover:bg-gray-100">
+                                            <i data-lucide="plus" class="h-3 w-3"></i>
+                                        </button>
+                                        <button onclick="app.removeFromCart(${item.id})" class="ml-auto text-red-500 hover:text-red-700 text-xs">
+                                            Remove
+                                        </button>
+                                    </div>
+                                </div>
+                                <div class="text-right font-medium text-gray-900">
+                                    ₱${(item.price * item.quantity).toFixed(2)}
+                                </div>
+                            </div>
+                        `;
+                    }).join('');
+                    
+                    document.getElementById('cart-total').textContent = `₱${totalPrice.toFixed(2)}`;
+                }
+                
+                lucide.createIcons();
+            }
+
+            toggleCart() {
+                const sidebar = document.getElementById('cart-sidebar');
+                const isHidden = sidebar.classList.contains('hidden');
+                if (isHidden) {
+                    sidebar.classList.remove('hidden');
+                    document.body.style.overflow = 'hidden';
+                } else {
+                    sidebar.classList.add('hidden');
+                    document.body.style.overflow = '';
+                }
+            }
+
+            checkout() {
+                this.toggleCart();
+                this.currentTotal = this.cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+                
+                // Update all total displays
+                document.getElementById('checkout-total').textContent = `₱${this.currentTotal.toFixed(2)}`;
+                document.getElementById('checkout-items-count').textContent = this.cart.reduce((sum, item) => sum + item.quantity, 0);
+                document.getElementById('total-amount-display').textContent = `₱${this.currentTotal.toFixed(2)}`;
+                document.getElementById('epayment-total-display').textContent = `₱${this.currentTotal.toFixed(2)}`;
+                document.getElementById('required-amount').textContent = `₱${this.currentTotal.toFixed(2)}`;
+                document.getElementById('exact-amount-required').textContent = `₱${this.currentTotal.toFixed(2)}`;
+                
+                // Reset payment sections
+                this.selectPaymentMethod('cod');
+                document.getElementById('cod-amount').value = '';
+                document.getElementById('change-display').classList.add('hidden');
+                document.getElementById('insufficient-funds').classList.add('hidden');
+                document.getElementById('cod-amount').classList.remove('validation-error');
+                document.getElementById('cod-validation').classList.remove('show');
+                
+                // Reset receipt
+                this.receiptAmount = 0;
+                document.getElementById('receipt-data').value = '';
+                document.getElementById('receipt-amount').value = '0';
+                document.getElementById('receipt-preview-container').classList.add('hidden');
+                document.getElementById('receipt-upload-placeholder').classList.remove('hidden');
+                document.getElementById('receipt-upload-area').classList.remove('has-receipt');
+                document.getElementById('receipt-validation').classList.remove('show');
+                document.getElementById('receipt-upload-area').classList.remove('validation-error');
+                document.getElementById('amount-validation-status').classList.add('hidden');
+                document.getElementById('receipt-amount-display').textContent = 'Not verified';
+                document.getElementById('receipt-amount-display').className = 'font-bold text-gray-400';
+                
+                document.getElementById('checkout-modal').classList.remove('hidden');
+            }
+
+            closeCheckout() {
+                document.getElementById('checkout-modal').classList.add('hidden');
+            }
+
+            selectPaymentMethod(method) {
+                this.currentPaymentMethod = method;
+                
+                // Update visual selection
+                document.querySelectorAll('.payment-method-card').forEach(card => {
+                    card.classList.remove('selected');
+                });
+                document.getElementById(`payment-${method}`).classList.add('selected');
+                
+                // Update hidden input
+                document.getElementById('payment-method-input').value = method;
+                
+                // Show/hide appropriate sections
+                const codSection = document.getElementById('cod-section');
+                const epaymentSection = document.getElementById('epayment-section');
+                
+                if (method === 'cod') {
+                    codSection.classList.remove('hidden');
+                    epaymentSection.classList.add('hidden');
+                    this.validateForm();
+                } else {
+                    codSection.classList.add('hidden');
+                    epaymentSection.classList.remove('hidden');
+                    
+                    // Update e-wallet specific info
+                    const config = this.walletConfig[method];
+                    document.getElementById('epayment-account').textContent = config.accountNumber;
+                    document.getElementById('epayment-account-name').textContent = config.accountName;
+                    document.getElementById('receipt-label').textContent = `${config.name} Receipt`;
+                    document.getElementById('wallet-app-name').textContent = config.name;
+                    
+                    this.validateForm();
+                }
+            }
+
+            calculateChange() {
+                const amountInput = document.getElementById('cod-amount');
+                const amount = parseFloat(amountInput.value) || 0;
+                const changeDisplay = document.getElementById('change-display');
+                const insufficientFunds = document.getElementById('insufficient-funds');
+                
+                // Validation
+                if (amount < this.currentTotal) {
+                    amountInput.classList.add('validation-error');
+                    document.getElementById('cod-validation').classList.add('show');
+                } else {
+                    amountInput.classList.remove('validation-error');
+                    document.getElementById('cod-validation').classList.remove('show');
+                }
+                
+                if (amount > 0) {
+                    changeDisplay.classList.remove('hidden');
+                    document.getElementById('payment-amount').textContent = `₱${amount.toFixed(2)}`;
+                    
+                    const change = amount - this.currentTotal;
+                    
+                    if (change >= 0) {
+                        document.getElementById('change-amount').textContent = `₱${change.toFixed(2)}`;
+                        document.getElementById('change-amount').classList.remove('text-red-600');
+                        document.getElementById('change-amount').classList.add('text-green-600');
+                        insufficientFunds.classList.add('hidden');
+                    } else {
+                        document.getElementById('change-amount').textContent = `₱${Math.abs(change).toFixed(2)}`;
+                        document.getElementById('change-amount').classList.remove('text-green-600');
+                        document.getElementById('change-amount').classList.add('text-red-600');
+                        insufficientFunds.classList.remove('hidden');
+                    }
+                } else {
+                    changeDisplay.classList.add('hidden');
+                    insufficientFunds.classList.add('hidden');
+                }
+                
+                this.validateForm();
+            }
+
+            handleReceiptUpload(input) {
+                const file = input.files[0];
+                if (!file) return;
+                
+                if (file.size > 5 * 1024 * 1024) {
+                    alert('Receipt image size must be less than 5MB');
+                    return;
+                }
+                
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    const receiptData = e.target.result;
+                    
+                    // Simulate receipt amount extraction (in real app, use OCR)
+                    // For demo, we'll ask user to confirm amount or simulate validation
+                    this.processReceiptValidation(receiptData, file.name);
+                };
+                reader.readAsDataURL(file);
+            }
+
+            processReceiptValidation(receiptData, fileName) {
+                // In a real application, you would use OCR here to extract the amount
+                // For this demo, we'll simulate the validation process
+                
+                // Show preview
+                const preview = document.getElementById('receipt-preview');
+                preview.src = receiptData;
+                
+                document.getElementById('receipt-preview-container').classList.remove('hidden');
+                document.getElementById('receipt-upload-placeholder').classList.add('hidden');
+                document.getElementById('receipt-upload-area').classList.add('has-receipt');
+                document.getElementById('receipt-data').value = receiptData;
+                
+                // Simulate amount extraction (in production, replace with actual OCR)
+                // For demo purposes, we'll assume the receipt amount matches if user confirms
+                // Or you can implement a manual entry fallback
+                
+                this.showReceiptAmountModal(receiptData);
+            }
+
+            showReceiptAmountModal(receiptData) {
+                // Create a modal to confirm receipt amount
+                const modal = document.createElement('div');
+                modal.id = 'receipt-amount-modal';
+                modal.className = 'fixed inset-0 z-[60] flex items-center justify-center p-4';
+                modal.innerHTML = `
+                    <div class="absolute inset-0 bg-black bg-opacity-50" onclick="app.closeReceiptAmountModal()"></div>
+                    <div class="bg-white rounded-lg shadow-xl max-w-sm w-full fade-in relative z-10">
+                        <div class="p-6">
+                            <h3 class="text-lg font-bold text-gray-900 mb-4">Confirm Receipt Amount</h3>
+                            <p class="text-sm text-gray-600 mb-4">Please enter the exact amount shown on your ${this.walletConfig[this.currentPaymentMethod].name} receipt:</p>
+                            
+                            <div class="mb-4">
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Receipt Amount (₱) *</label>
+                                <input type="number" id="manual-receipt-amount" step="0.01" min="0" 
+                                    class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 outline-none"
+                                    placeholder="${this.currentTotal.toFixed(2)}">
+                                <p class="text-xs text-gray-500 mt-1">Order total: ₱${this.currentTotal.toFixed(2)}</p>
+                            </div>
+                            
+                            <div class="flex gap-3">
+                                <button onclick="app.closeReceiptAmountModal()" class="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50">
+                                    Cancel
+                                </button>
+                                <button onclick="app.confirmReceiptAmount()" class="flex-1 px-4 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600">
+                                    Confirm
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                document.body.appendChild(modal);
+                
+                // Auto-fill with expected amount
+                setTimeout(() => {
+                    const input = document.getElementById('manual-receipt-amount');
+                    if (input) input.value = this.currentTotal.toFixed(2);
+                }, 100);
+            }
+
+            closeReceiptAmountModal() {
+                const modal = document.getElementById('receipt-amount-modal');
+                if (modal) modal.remove();
+            }
+
+            confirmReceiptAmount() {
+                const amountInput = document.getElementById('manual-receipt-amount');
+                const amount = parseFloat(amountInput.value) || 0;
+                
+                if (amount <= 0) {
+                    amountInput.classList.add('validation-error');
+                    return;
+                }
+                
+                this.receiptAmount = amount;
+                document.getElementById('receipt-amount').value = amount;
+                
+                this.closeReceiptAmountModal();
+                this.updateReceiptValidationUI();
+                this.validateForm();
+            }
+
+            updateReceiptValidationUI() {
+                const receiptAmountDisplay = document.getElementById('receipt-amount-display');
+                const validationStatus = document.getElementById('amount-validation-status');
+                const uploadArea = document.getElementById('receipt-upload-area');
+                const validationMsg = document.getElementById('receipt-validation');
+                
+                receiptAmountDisplay.textContent = `₱${this.receiptAmount.toFixed(2)}`;
+                
+                if (this.receiptAmount === this.currentTotal) {
+                    // Amount matches
+                    receiptAmountDisplay.className = 'font-bold amount-match';
+                    validationStatus.classList.remove('hidden');
+                    validationStatus.innerHTML = `
+                        <span class="text-green-600">✓</span>
+                        <span class="text-green-600 font-medium">Amount matches order total</span>
+                    `;
+                    uploadArea.classList.remove('validation-error');
+                    validationMsg.classList.remove('show');
+                } else {
+                    // Amount doesn't match
+                    receiptAmountDisplay.className = 'font-bold amount-mismatch';
+                    validationStatus.classList.remove('hidden');
+                    const diff = this.receiptAmount - this.currentTotal;
+                    if (diff > 0) {
+                        validationStatus.innerHTML = `
+                            <span class="text-orange-600">⚠</span>
+                            <span class="text-orange-600 font-medium">Overpayment detected (₱${diff.toFixed(2)}). Please verify.</span>
+                        `;
+                    } else {
+                        validationStatus.innerHTML = `
+                            <span class="text-red-600">✗</span>
+                            <span class="text-red-600 font-medium">Insufficient amount (short by ₱${Math.abs(diff).toFixed(2)})</span>
+                        `;
+                    }
+                    uploadArea.classList.add('validation-error');
+                    validationMsg.classList.add('show');
+                }
+            }
+
+            validateForm() {
+                const placeOrderBtn = document.getElementById('place-order-btn');
+                let isValid = true;
+                
+                // Check if cart has items
+                if (this.cart.length === 0) {
+                    isValid = false;
+                }
+                
+                if (this.currentPaymentMethod === 'cod') {
+                    // Validate COD amount
+                    const codAmount = parseFloat(document.getElementById('cod-amount').value) || 0;
+                    if (codAmount < this.currentTotal) {
+                        isValid = false;
+                    }
+                } else {
+                    // Validate e-payment receipt
+                    const receiptData = document.getElementById('receipt-data').value;
+                    if (!receiptData) {
+                        isValid = false;
+                    }
+                    // Validate amount matches
+                    if (this.receiptAmount !== this.currentTotal) {
+                        isValid = false;
+                    }
+                }
+                
+                placeOrderBtn.disabled = !isValid;
+                if (!isValid) {
+                    placeOrderBtn.classList.add('opacity-50', 'cursor-not-allowed');
+                } else {
+                    placeOrderBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+                }
+            }
+
+            viewOrderDetails() {
+                const modal = document.getElementById('order-details-modal');
+                const content = document.getElementById('order-details-content');
+                
+                content.innerHTML = this.cart.map(item => {
+                    const imageUrl = this.getItemImage(item);
+                    return `
+                        <div class="flex gap-3 pb-3 border-b border-gray-100 last:border-0">
+                            <img src="${imageUrl}" class="h-16 w-16 object-cover rounded-lg" onerror="this.src='https://source.unsplash.com/100x100/?food'">
+                            <div class="flex-1">
+                                <h4 class="font-medium text-gray-900">${item.name}</h4>
+                                <p class="text-sm text-gray-500">Qty: ${item.quantity} × ₱${item.price.toFixed(2)}</p>
+                                <p class="text-sm font-medium text-orange-600">₱${(item.price * item.quantity).toFixed(2)}</p>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+                
+                modal.classList.remove('hidden');
+            }
+
+            closeOrderDetails() {
+                document.getElementById('order-details-modal').classList.add('hidden');
+            }
+
+            submitOrder(e) {
+                e.preventDefault();
+                
+                // Final validation
+                if (this.currentPaymentMethod === 'cod') {
+                    const codAmount = parseFloat(document.getElementById('cod-amount').value) || 0;
+                    if (codAmount < this.currentTotal) {
+                        alert('Insufficient amount. Please enter enough cash for your order.');
+                        document.getElementById('cod-amount').focus();
+                        return;
+                    }
+                } else {
+                    const receiptData = document.getElementById('receipt-data').value;
+                    if (!receiptData) {
+                        alert(`Please upload your ${this.walletConfig[this.currentPaymentMethod].name} receipt before placing the order.`);
+                        return;
+                    }
+                    if (this.receiptAmount !== this.currentTotal) {
+                        alert(`Receipt amount (₱${this.receiptAmount.toFixed(2)}) does not match order total (₱${this.currentTotal.toFixed(2)}). Please upload the correct receipt.`);
+                        return;
+                    }
+                }
+                
+                const formData = new FormData(e.target);
+                
+                const order = {
+                    id: Date.now(),
+                    customer: {
+                        name: formData.get('name'),
+                        phone: formData.get('phone'),
+                        address: formData.get('address')
+                    },
+                    payment: {
+                        method: this.currentPaymentMethod,
+                        walletName: this.currentPaymentMethod === 'cod' ? null : this.walletConfig[this.currentPaymentMethod].name
+                    },
+                    items: [...this.cart],
+                    total: this.currentTotal,
+                    status: 'pending',
+                    timestamp: new Date().toISOString()
+                };
+
+                // Add payment-specific details
+                if (this.currentPaymentMethod === 'cod') {
+                    const amountPaid = parseFloat(document.getElementById('cod-amount').value);
+                    order.paymentDetails = {
+                        amountPaid: amountPaid,
+                        change: amountPaid - this.currentTotal
+                    };
+                } else {
+                    order.paymentDetails = {
+                        receiptData: document.getElementById('receipt-data').value,
+                        receiptAmount: this.receiptAmount,
+                        walletAccount: this.walletConfig[this.currentPaymentMethod].accountNumber
+                    };
+                }
+                
+                const orders = this.getOrders();
+                orders.unshift(order);
+                this.saveOrders(orders);
+                
+                this.cart = [];
+                this.updateCartUI();
+                this.closeCheckout();
+                
+                // Show success message
+                if (this.currentPaymentMethod === 'cod') {
+                    const change = order.paymentDetails.change;
+                    this.showToast(`Order placed! Your change will be ₱${change.toFixed(2)} 🎉`);
+                } else {
+                    this.showToast(`Order placed! ${this.walletConfig[this.currentPaymentMethod].name} payment verified 🎉`);
+                }
+            }
+
+            showToast(message) {
+                const toast = document.getElementById('toast');
+                document.getElementById('toast-message').textContent = message;
+                toast.classList.remove('translate-y-full', 'opacity-0');
+                
+                setTimeout(() => {
+                    toast.classList.add('translate-y-full', 'opacity-0');
+                }, 3000);
+            }
+        }
+
+        const app = new PizzaApp();
+    </script>
+</body>
+</html>

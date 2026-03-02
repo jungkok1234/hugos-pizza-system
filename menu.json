@@ -1,0 +1,41 @@
+{
+  "lastUpdated": "2025-03-02T10:30:00",
+  "items": [
+    {
+      "id": 1,
+      "name": "Margherita Classic",
+      "price": 380,
+      "description": "Fresh tomatoes, basil, and buffalo mozzarella with olive oil",
+      "available": true,
+      "category": "pizza",
+      "image": "margherita.jpg"
+    },
+    {
+      "id": 2,
+      "name": "Hawaiian Delight",
+      "price": 420,
+      "description": "Ham, pineapple chunks, and mozzarella cheese",
+      "available": false,
+      "category": "pizza",
+      "image": "hawaiian.jpg"
+    },
+    {
+      "id": 3,
+      "name": "Carbonara Supreme",
+      "price": 280,
+      "description": "Creamy carbonara with bacon bits and parmesan",
+      "available": true,
+      "category": "pasta",
+      "image": "carbonara.jpg"
+    },
+    {
+      "id": 4,
+      "name": "Garlic Parmesan Wings",
+      "price": 250,
+      "description": "Crispy wings tossed in garlic parmesan sauce",
+      "available": true,
+      "category": "sides",
+      "image": "wings.jpg"
+    }
+  ]
+}
